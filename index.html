@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>
+			SolarSystemAnimation
+		</title>
+	</head>
+	<body>
+		<canvas id="glCanvas" width="1024" height="600"></canvas>
+		<script type="text/javascript" src="babylon.js"></script>
+		<script type="text/javascript" src="fireProceduralTexture.js"></script>
+	</body>
+</html>
+<script>
+	main();
+	function main() {
+		  canvas = document.querySelector("#glCanvas")// Initialize the GL context
+		  const gl = canvas.getContext("webgl")
+		  if (gl === null) {
+			alert("Unable to initialize WebGL. Your browser or machine may not support it.");// Only continue if WebGL is available and working
+		  }
+		  //gl.clearColor(0.0, 0.0, 0.0, 1.0);// Set clear color to black, fully opaque
+		  //gl.clear(gl.COLOR_BUFFER_BIT);// Clear the color buffer with specified clear color
+    	  draw(canvas);
+	}
+	function setScene(){
+		engine = new BABYLON.Engine(canvas, true);
+		scene = new BABYLON.Scene(engine);
+		scene.clearColor = BABYLON.Color3.Black()
+	}
+	function setCamera(){
+		camera = new BABYLON.ArcRotateCamera("Camera", 0, 0, 0, BABYLON.Vector3.Zero(), scene);
+		camera.setPosition(new BABYLON.Vector3(0, 50, -500));
+		scene.activeCamera.attachControl(canvas);
+	}
+	function pOrN(){
+		return Math.random() < 0.5 ? -1 : 1;
+	}
+	// custom position function for SPS creation
+	function myPositionFunction(particle, i, s) {
+		let factor = 2000;
+		particle.position.x = 1000 + (Math.random() * (factor*pOrN()));
+		particle.position.y = 1000 + (Math.random() * (factor*pOrN()));
+		particle.position.z = 1000 + (Math.random() * (factor*pOrN()));
+		particle.color = new BABYLON.Color4(1, 1, 1, 1.0);
+	}
+	function setStars(){
+		let numberOfStars = 10000;    		// nb of triangles
+		let stars = BABYLON.MeshBuilder.CreateSphere("stars", {segments: 6, diameter: 1}, scene)
+		let SPS = new BABYLON.SolidParticleSystem('SPS', scene, {updatable: false});
+		SPS.addShape(stars, numberOfStars, {positionFunction: myPositionFunction});
+		let mesh = SPS.buildMesh();
+		pl = new BABYLON.PointLight("pl", new BABYLON.Vector3(0, 0, 0), scene);
+  		pl.diffuse = new BABYLON.Color3(1, 1, 1);
+  		pl.intensity = 1;
+		stars.dispose();
+		spot2 = new BABYLON.SpotLight("spot2", new BABYLON.Vector3(0, 2000, 0), new BABYLON.Vector3(0, 0, 1), Math.PI, 1000, scene);
+
+    	spot2.diffuse = new BABYLON.Color3(1, 1, 1);
+    	spot2.specular = new BABYLON.Color3(0, 0, 0);
+    	spot2.intensity = 100;
+		//spot2.setDirectionToTarget();
+	}
+	function setSun(){
+		let fireMaterial = new BABYLON.StandardMaterial("redstar", scene);
+		let fireTexture = new BABYLON.FireProceduralTexture("fire", 256, scene);
+    	fireTexture.speed = new BABYLON.Vector2(-.2, -.2);
+
+    	//fireMaterial.diffuseTexture = fireTexture;
+		fireMaterial.diffuseTexture = fireTexture;
+    	fireMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+		//fireMaterial.emissiveColor = new BABYLON.Color3(.7, .4, .4);
+		fireMaterial.emissiveColor = new BABYLON.Color3(1, 1, 1);
+
+
+		//var sunLight = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, 0), scene);
+		//sunLight.intensity = 0.0005;
+		sun = BABYLON.Mesh.CreateSphere("sun", 50.0, 50.0, scene, false, BABYLON.Mesh.DEFAULTSIDE);
+		sun.material = fireMaterial;
+		sun.position = new BABYLON.Vector3(0,0,0);
+
+		spot = new BABYLON.SpotLight("spot", new BABYLON.Vector3(0, 0, 0), new BABYLON.Vector3(1, 1, 1), Math.PI, 50, scene);
+
+    	spot.diffuse = new BABYLON.Color3(1, 1, 1);
+    	spot.specular = new BABYLON.Color3(0, 0, 0);
+    	spot.intensity = 1;
+
+		//var hl = new BABYLON.HighlightLayer("hl1", scene);
+		//hl.addMesh(sun, BABYLON.Color3.Yellow());
+	}
+	function setPlanets(){
+		//let earthTexture = new BABYLON.Texture("textures/2k_earth_daymap.jpg", scene);
+		let earthMaterial = new BABYLON.StandardMaterial("earthMaterial", scene);
+
+		earthMaterial.diffuseTexture = new BABYLON.Texture("textures/2k_earth_daymap.jpg", scene);
+
+		//earthMaterial.rotation = new BABYLON.Vector3( Math.PI , 0 , 0);
+
+		planet = BABYLON.Mesh.CreateSphere("planet", 32, 20, scene);
+		planet.parent = sun;
+		//let planetMaterial = new BABYLON.StandardMaterial("planetSurface", scene);
+		planet.material = earthMaterial;
+		planet.rotation = new BABYLON.Vector3( Math.PI , 0 , 0);
+		planet.material.specularColor = new BABYLON.Color3(0, 0, 0);
+	}
+	function planetRotation(){
+			spot2.position = new BABYLON.Vector3(camera.position.x, camera.position.y, camera.position.z + 1000);
+			//pl.position = BABYLON.Vector3(0,0,0);
+			planet.position = new BABYLON.Vector3(50 * Math.sin(alpha), planet.parent.position.y, 50 * Math.cos(alpha));
+			planet.rotation.y += .03;
+			alpha += 0.005;
+	}
+	function draw(){
+		setScene();
+		setCamera();
+		setStars();
+		setSun();
+		setPlanets();
+		alpha = Math.PI;
+		scene.registerBeforeRender(()=>{
+			  planetRotation();
+			  spot.setDirectionToTarget(planet.position);
+		});
+		engine.runRenderLoop(function () {
+			scene.render();
+  		});
+	}
+</script>
